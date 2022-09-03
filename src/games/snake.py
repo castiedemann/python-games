@@ -1,7 +1,5 @@
-from operator import indexOf
-from random import choice, randint
+from random import choice
 from time import time
-from tkinter import Canvas, Tk
 from src.tile_game import TileGame
 
 DIRECTIONS = ["up", "right", "down", "left"]

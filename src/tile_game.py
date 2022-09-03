@@ -53,23 +53,11 @@ class TileGame:
     }
 
   def init_grid(self, gridColor):
-    for x in range(0, self.tilesX):
-      self.canvas.create_line(
-        x0=x,
-        x1=x,
-        y0=0,
-        y1=self.screenHeight,
-        fill=gridColor
-      )
+    for x in range(0, self.screenWidth, self.tileSize):
+      self.canvas.create_line(x, 0, x, self.screenHeight, fill=gridColor)
 
-    for y in range(0, self.tilesY):
-      self.canvas.create_line(
-        x0=0,
-        x1=self.screenWidth,
-        y0=y,
-        y1=y,
-        fill=gridColor
-      )
+    for y in range(0, self.screenHeight, self.tileSize):
+      self.canvas.create_line(0, y, self.screenWidth, y, fill=gridColor)
   
   def is_within_bounds(self, x, y):
     return x >= 0 and x < self.tilesX and y >= 0 and y < self.tilesY
@@ -98,11 +86,12 @@ class TileGame:
   def draw_tile_rect(self, x, y, color):
     self.clear_tile(x, y)
     tile = self.get_tile(x, y)
+    rect = tile["rect"]
     tile["canvasItemId"] = self.canvas.create_rectangle(
-      tile["rect"]["left"],
-      tile["rect"]["top"],
-      tile["rect"]["right"],
-      tile["rect"]["bottom"],
+      rect["left"],
+      rect["top"],
+      rect["right"],
+      rect["bottom"],
       fill=color,
       outline=color
     )

@@ -1,78 +1,69 @@
 from random import random
-from tkinter import Canvas, Tk
+from src.tile_game import TileGame
 
-GRID_SIZE = 10
-FPS = 1000 // 60
-SCREEN_WIDTH = 1280
-SCREEN_HEIGHT = 720
+class Life(TileGame):
+  def __init__(self):
+    super().__init__(
+      tileSize=10,
+      tilesX=128,
+      tilesY=72,
+      title="Life",
+      gridColor="green"
+    )
 
-cells = {}
+    self.cells = {}
+    self.init_random()
 
-widget = Tk()
-widget.geometry(f"{SCREEN_WIDTH}x{SCREEN_HEIGHT}")
-widget.title("Game of life")
+  def init_random(self):
+    halfW = self.tilesX / 2
+    halfH = self.tilesY / 2
+    for tile in self.tiles:
+      # More likely in the centerr
+      probability = (1 - abs(halfW - tile["x"]) / halfW + 1 - abs(halfH - tile["y"]) / halfH) / 2
+      if random() < 0.25 * probability:
+        self.addCell(tile["x"], tile["y"])
+  
+  def addCell(self, x, y):
+    index = self.get_tile_index(x, y)
+    self.draw_tile_rect(x, y, "green")
+    self.cells[index] = self.tiles[index]
 
-canvas = Canvas(widget, width=SCREEN_WIDTH, height=SCREEN_HEIGHT)
-canvas.pack()
-canvas.create_rectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, fill="black")
+  def removeCell(self, x, y):
+    index = self.get_tile_index(x, y)
+    self.clear_tile(x, y)
+    del self.cells[index]
 
-for x in range(0, SCREEN_WIDTH, GRID_SIZE):
-  canvas.create_line(x, 0, x, SCREEN_HEIGHT, fill="green")
+  def step(self):
+    neighbourCounts = {}
+    for index in self.cells:
+      if index not in neighbourCounts:
+        neighbourCounts[index] = 0
+      tile = self.cells[index]
+      self.countNeighbours(tile["x"], tile["y"], neighbourCounts)
 
-for y in range(0, SCREEN_HEIGHT, GRID_SIZE):
-  canvas.create_line(0, y, SCREEN_WIDTH, y, fill="green")
+    for index in neighbourCounts:
+      tile = self.tiles[index]
+      if index not in self.cells:
+        if neighbourCounts[index] == 3:
+          self.addCell(tile["x"], tile["y"])
+      elif neighbourCounts[index] < 2 or neighbourCounts[index] > 3:
+          self.removeCell(tile["x"], tile["y"])
+    
+    return True
 
-def getCellKey(x, y):
-  return x + y * SCREEN_WIDTH
+  def countNeighbours(self, x, y, neighbourCounts):
+    minX = max(x - 1, 0)
+    maxX = min(x + 2, self.tilesX)
+    minY = max(y - 1, 0)
+    maxY = min(y + 2, self.tilesY)
+    for xIndex in range(minX, maxX):
+      for yIndex in range(minY, maxY):
+        if xIndex != x or yIndex != y:
+          index = self.get_tile_index(xIndex, yIndex)
+          if index in neighbourCounts:
+            neighbourCounts[index] += 1
+          else:
+            neighbourCounts[index] = 1
 
-def addCell(x, y):
-  key = getCellKey(x, y)
-  cells[key] = canvas.create_rectangle(x * GRID_SIZE, y * GRID_SIZE, (x + 1) * GRID_SIZE, (y + 1) * GRID_SIZE, fill="green")
-
-def removeCell(x, y):
-  key = getCellKey(x, y)
-  canvas.delete(cells[key])
-  del cells[key]
-
-for x in range(0, SCREEN_WIDTH // GRID_SIZE):
-  for y in range(0, SCREEN_HEIGHT // GRID_SIZE):
-    if random() < 0.5:
-      addCell(x, y)
-
-def update():
-  step()
-  widget.update()
-  widget.after(FPS, update)
-
-def countNeighbours(x, y, neighbourCounts):
-  for i in range(-1, 2):
-    for j in range(-1, 2):
-      if i == 0 and j == 0:
-        continue
-      neighbourKey = getCellKey(x + i, y + j)
-      if neighbourKey in neighbourCounts:
-        neighbourCounts[neighbourKey] += 1
-      else:
-        neighbourCounts[neighbourKey] = 1
-
-def step():
-  neighbourCounts = {}
-  for key in cells:
-    if key not in neighbourCounts:
-      neighbourCounts[key] = 0
-    x = key % SCREEN_WIDTH
-    y = key // SCREEN_WIDTH
-    countNeighbours(x, y, neighbourCounts)
-
-  for key in neighbourCounts:
-    x = key % SCREEN_WIDTH
-    y = key // SCREEN_WIDTH
-    if key not in cells:
-      if neighbourCounts[key] == 3:
-        addCell(x, y)
-    elif neighbourCounts[key] < 2 or neighbourCounts[key] > 3:
-        removeCell(x, y)
-
-update()
-
-widget.mainloop()
+life = Life()
+life.start()
