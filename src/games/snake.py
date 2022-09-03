@@ -1,46 +1,11 @@
+from operator import indexOf
 from random import choice, randint
 from time import time
 from tkinter import Canvas, Tk
+from src.tile_game import TileGame
 
-CELL_SIZE = 40
-GAME_WIDTH = 16
-GAME_HEIGHT = 16
-FPS = 1000 // 60
-SCREEN_WIDTH = CELL_SIZE * GAME_WIDTH
-SCREEN_HEIGHT = CELL_SIZE * GAME_HEIGHT
-
-widget = Tk()
-widget.geometry(f"{SCREEN_WIDTH}x{SCREEN_HEIGHT}")
-widget.title("Snake")
-
-canvas = Canvas(widget, width=SCREEN_WIDTH, height=SCREEN_HEIGHT)
-canvas.pack()
-canvas.create_rectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, fill="black")
-
-for x in range(0, SCREEN_WIDTH, CELL_SIZE):
-  canvas.create_line(x, 0, x, SCREEN_HEIGHT, fill="gray")
-
-for y in range(0, SCREEN_HEIGHT, CELL_SIZE):
-  canvas.create_line(0, y, SCREEN_WIDTH, y, fill="gray")
-
-cells = {}
-
-def getCellKey(x, y):
-  return x + y * GAME_WIDTH
-
-for x in range(0, GAME_WIDTH):
-  for y in range(0, GAME_HEIGHT):
-    cells[getCellKey(x, y)] = None
-
-directions = ["up", "right", "down", "left"]
-direction = choice(directions)
-minSpeed = 2
-maxSpeed = 20
-minSnakeLen = 3
-maxSnakeLen = GAME_WIDTH * GAME_HEIGHT
-lastMove = 0
-
-movement = {
+DIRECTIONS = ["up", "right", "down", "left"]
+MOVEMENT = {
   "up": {
     "x": 0,
     "y": -1
@@ -59,136 +24,122 @@ movement = {
   }
 }
 
-snake = []
-pending = []
-fruit = {
-  "x": 0,
-  "y": 0
-}
+def isHorizontal(direction):
+  return DIRECTIONS.index(direction) % 2 == 1
 
-def isVacant(x, y):
-  if x < 0 or x >= GAME_WIDTH or y < 0 or y >= GAME_HEIGHT:
-    return False
-  return cells[getCellKey(x, y)] == None
+TILE_SIZE = 40
+TILES_X = 16
+TILES_Y = 16
+MIN_SPEED = 2
+MAX_SPEED = 20
+START_SNAKE_LEN = 3
 
-def drawCell(x, y, fill):
-  if not isVacant(x, y):
-    clearCell(x, y)
-  cells[getCellKey(x, y)] = canvas.create_rectangle(x * CELL_SIZE, y * CELL_SIZE, (x + 1) * CELL_SIZE, (y + 1) * CELL_SIZE, fill=fill)
+class Snake(TileGame):
+  def __init__(self):
+    super().__init__(
+      tileSize=TILE_SIZE,
+      tilesX=TILES_X,
+      tilesY=TILES_Y,
+      title="Snake"
+    )
 
-def clearCell(x, y):
-  if not isVacant(x, y):
-    key = getCellKey(x, y)
-    canvas.delete(cells[key])
-    cells[key] = None
+    self.direction = choice(DIRECTIONS)
+    self.lastMoveTime = 0
+    self.pendingGrowCounters = []
+    self.fruit = self.tiles[0]
+    self.snake = []
 
-def getRandomAvailableCell():
-  available = {}
-  for x in range(0, GAME_WIDTH):
-    for y in range(0, GAME_HEIGHT):
-      if isVacant(x, y):
-        available[getCellKey(x, y)] = { "x": x, "y": y }
-  return choice(list(available.values()))
+    self.init_snake()
+    self.update_fruit()
 
-def updateFruit():
-  cell = getRandomAvailableCell()
-  if cell == None:
-    return False
+  def init_snake(self):
+    move = MOVEMENT[self.direction]
+    initX = TILES_X // 2 - move["x"] * START_SNAKE_LEN
+    initY = TILES_Y // 2 - move["y"] * START_SNAKE_LEN
+    for i in range(0, START_SNAKE_LEN):
+      self.extend_snake(initX + move["x"] * i, initY + move["y"] * i)
 
-  fruit["x"] = cell["x"]
-  fruit["y"] = cell["y"]
-  drawCell(cell["x"], cell["y"], "green")
-  return True
-
-def addPart(x, y, isHead = False):
-  drawCell(x, y, "gray")
-  part = {
-    "x": x,
-    "y": y
-  }
-  if isHead:
-    snake.insert(0, part)
-  else:
-    snake.append(part)
-
-def shift():
-  snakeLen = snake.__len__()
-
-  oldHead = snake[0]
-  oldTail = snake[snakeLen - 1]
-
-  newHeadX = oldHead["x"] + movement[direction]["x"]
-  newHeadY = oldHead["y"] + movement[direction]["y"]
-
-  isFruit = newHeadX == fruit["x"] and newHeadY == fruit["y"]
-  if not isFruit and not isVacant(newHeadX, newHeadY):
-    return False
-
-  addPart(newHeadX, newHeadY, True)
-
-  for index, count in enumerate(pending):
-      pending[index] = count - 1
-
-  if pending.__len__() > 0 and pending[0] == 0:   
-    pending.pop(0)
-  else:
-    snake.pop()
-    clearCell(oldTail["x"], oldTail["y"])
-
-  if isFruit:
-    drawCell(newHeadX, newHeadY, "white")
-    updateFruit()
-    pending.append(snakeLen)
+  def step(self):
+    now = time()
+    elapsed = now - self.lastMoveTime
+    speed = self.calculateSpeed()
+    if elapsed > 1 / speed:
+      if not self.shift():
+        return False
+      self.lastMoveTime = now
+    return True
   
-  return True
+  def calculateSpeed(self):
+    snakeLen = self.snake.__len__()
+    maxSnakeLen = self.tilesX * self.tilesY
+    snakePercent =  (snakeLen - START_SNAKE_LEN) / (maxSnakeLen - START_SNAKE_LEN)
+    return MIN_SPEED + (MAX_SPEED - MIN_SPEED) * snakePercent
 
-def update():
-  if not step():
-    print("Game Over!")
-    return
-  widget.update()
-  widget.after(FPS, update)
+  def shift(self):
+    snakeLen = self.snake.__len__()
 
-def step():
-  global lastMove
-  now = time()
-  elapsed = now - lastMove
-  snakeLen = snake.__len__()
-  snakePercent =  (snakeLen - minSnakeLen) / (maxSnakeLen - minSnakeLen)
-  speed = minSpeed + (maxSpeed - minSpeed) * snakePercent
-  if elapsed > 1 / speed:
-    if not shift():
+    oldHead = self.snake[0]
+    oldTail = self.snake[snakeLen - 1]
+
+    newHeadX = oldHead["x"] + MOVEMENT[self.direction]["x"]
+    newHeadY = oldHead["y"] + MOVEMENT[self.direction]["y"]
+
+    if not self.is_within_bounds(newHeadX, newHeadY):
       return False
-    lastMove = now
-  return True
+    
+    newHead = self.get_tile(newHeadX, newHeadY)
+    isFruit = newHead == self.fruit
+    if not isFruit and not self.is_empty(newHeadX, newHeadY):
+      return False
 
-def setDirection(newDirection):
-  global direction, lastMove
-  if direction == newDirection or directions.index(direction) % 2 != directions.index(newDirection) % 2:
-    direction = newDirection
-    lastMove = 0
+    self.extend_snake(newHeadX, newHeadY)
 
-def onUp(e):
-  setDirection("up")
-def onDown(e):
-  setDirection("down")
-def onRight(e):
-  setDirection("right")
-def onLeft(e):
-  setDirection("left")
+    for index, count in enumerate(self.pendingGrowCounters):
+        self.pendingGrowCounters[index] = count - 1
 
-widget.bind("<Up>", onUp)
-widget.bind("<Right>", onRight)
-widget.bind("<Down>", onDown)
-widget.bind("<Left>", onLeft)
+    if self.pendingGrowCounters.__len__() > 0 and self.pendingGrowCounters[0] == 0:   
+      self.pendingGrowCounters.pop(0)
+    else:
+      self.snake.pop()
+      self.clear_tile(oldTail["x"], oldTail["y"])
 
-updateFruit()
+    if isFruit:
+      self.draw_tile_rect(newHeadX, newHeadY, "white")
+      self.update_fruit()
+      self.pendingGrowCounters.append(snakeLen)
+    
+    return True
+    
+  def get_random_available_tile(self):
+    available = []
+    for tile in self.tiles:
+      if tile["canvasItemId"] == None:
+        available.append(tile)
+    return choice(available)
 
-initX = GAME_WIDTH // 2
-initY = GAME_HEIGHT // 2
-for i in range(0, minSnakeLen):
-  addPart(initX - movement[direction]["x"] * i, initY - movement[direction]["y"] * i)
+  def update_fruit(self):
+    tile = self.get_random_available_tile()
+    if tile == None:
+      return False
 
-update()
+    self.fruit = tile
+    self.draw_tile_rect(tile["x"], tile["y"], "green")
+    return True
 
-widget.mainloop()
+  def extend_snake(self, x, y):
+    self.draw_tile_rect(x, y, "gray")
+    tile = self.get_tile(x, y)
+    self.snake.insert(0, tile)
+  
+  def set_direction(self, newDirection):
+    if self.direction == newDirection or isHorizontal(self.direction) != isHorizontal(newDirection):
+      self.direction = newDirection
+      self.lastMoveTime = 0
+
+  def on_key(self, e):
+    direction = e.keysym.split().pop().lower()
+    if DIRECTIONS.index(direction) != -1:
+      self.set_direction(direction)
+
+snake = Snake()
+snake.start()
