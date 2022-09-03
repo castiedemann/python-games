@@ -1,5 +1,4 @@
 from random import random
-from time import sleep
 from tkinter import Canvas, Tk
 
 GRID_SIZE = 10
