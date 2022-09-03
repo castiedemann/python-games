@@ -103,7 +103,8 @@ class TileGame:
       tile["rect"]["top"],
       tile["rect"]["right"],
       tile["rect"]["bottom"],
-      fill=color
+      fill=color,
+      outline=color
     )
 
   def update(self):

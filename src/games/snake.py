@@ -104,7 +104,7 @@ class Snake(TileGame):
       self.clear_tile(oldTail["x"], oldTail["y"])
 
     if isFruit:
-      self.draw_tile_rect(newHeadX, newHeadY, "white")
+      self.draw_tile_snake(newHeadX, newHeadY, "green")
       self.update_fruit()
       self.pendingGrowCounters.append(snakeLen)
     
@@ -128,19 +128,24 @@ class Snake(TileGame):
     tile = self.get_tile(x, y)
     self.snake.insert(0, tile)
 
-  def draw_tile_snake(self, x, y):
+  def draw_tile_snake(self, x, y, color = "gray"):
     self.clear_tile(x, y)
     tile = self.get_tile(x, y)
     isHor = isHorizontal(self.direction)
-    offsetX = self.tileSize * 0.1 if not isHor else 0
-    offsetY = self.tileSize * 0.1 if isHor else 0
+    vec = DIRECTION_VECTOR[self.direction]
+    offset = 3
+    offsetW = offset if not isHor else 0
+    offsetH = offset if isHor else 0
+    offsetX = -vec["x"] * offset
+    offsetY = -vec["y"] * offset
     
     tile["canvasItemId"] = self.canvas.create_rectangle(
-      tile["rect"]["left"] + offsetX,
-      tile["rect"]["top"] + offsetY,
-      tile["rect"]["right"] - offsetX,
-      tile["rect"]["bottom"] - offsetY,
-      fill="gray"
+      tile["rect"]["left"] + offsetW + offsetX,
+      tile["rect"]["top"] + offsetH + offsetY,
+      tile["rect"]["right"] - offsetW + offsetX,
+      tile["rect"]["bottom"] - offsetH + offsetY,
+      fill=color,
+      outline=color
     )
   
   def set_direction(self, newDirection):
