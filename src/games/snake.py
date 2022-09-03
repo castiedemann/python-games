@@ -5,7 +5,7 @@ from tkinter import Canvas, Tk
 from src.tile_game import TileGame
 
 DIRECTIONS = ["up", "right", "down", "left"]
-MOVEMENT = {
+DIRECTION_VECTOR = {
   "up": {
     "x": 0,
     "y": -1
@@ -53,11 +53,11 @@ class Snake(TileGame):
     self.update_fruit()
 
   def init_snake(self):
-    move = MOVEMENT[self.direction]
-    initX = TILES_X // 2 - move["x"] * START_SNAKE_LEN
-    initY = TILES_Y // 2 - move["y"] * START_SNAKE_LEN
+    vec = DIRECTION_VECTOR[self.direction]
+    initX = TILES_X // 2 - vec["x"] * START_SNAKE_LEN
+    initY = TILES_Y // 2 - vec["y"] * START_SNAKE_LEN
     for i in range(0, START_SNAKE_LEN):
-      self.extend_snake(initX + move["x"] * i, initY + move["y"] * i)
+      self.extend_snake(initX + vec["x"] * i, initY + vec["y"] * i)
 
   def step(self):
     now = time()
@@ -81,8 +81,8 @@ class Snake(TileGame):
     oldHead = self.snake[0]
     oldTail = self.snake[snakeLen - 1]
 
-    newHeadX = oldHead["x"] + MOVEMENT[self.direction]["x"]
-    newHeadY = oldHead["y"] + MOVEMENT[self.direction]["y"]
+    newHeadX = oldHead["x"] + DIRECTION_VECTOR[self.direction]["x"]
+    newHeadY = oldHead["y"] + DIRECTION_VECTOR[self.direction]["y"]
 
     if not self.is_within_bounds(newHeadX, newHeadY):
       return False
@@ -119,17 +119,29 @@ class Snake(TileGame):
 
   def update_fruit(self):
     tile = self.get_random_available_tile()
-    if tile == None:
-      return False
-
-    self.fruit = tile
-    self.draw_tile_rect(tile["x"], tile["y"], "green")
-    return True
+    if tile != None:
+      self.fruit = tile
+      self.draw_tile_rect(tile["x"], tile["y"], "green")
 
   def extend_snake(self, x, y):
-    self.draw_tile_rect(x, y, "gray")
+    self.draw_tile_snake(x, y)
     tile = self.get_tile(x, y)
     self.snake.insert(0, tile)
+
+  def draw_tile_snake(self, x, y):
+    self.clear_tile(x, y)
+    tile = self.get_tile(x, y)
+    isHor = isHorizontal(self.direction)
+    offsetX = self.tileSize * 0.1 if not isHor else 0
+    offsetY = self.tileSize * 0.1 if isHor else 0
+    
+    tile["canvasItemId"] = self.canvas.create_rectangle(
+      tile["rect"]["left"] + offsetX,
+      tile["rect"]["top"] + offsetY,
+      tile["rect"]["right"] - offsetX,
+      tile["rect"]["bottom"] - offsetY,
+      fill="gray"
+    )
   
   def set_direction(self, newDirection):
     if self.direction == newDirection or isHorizontal(self.direction) != isHorizontal(newDirection):

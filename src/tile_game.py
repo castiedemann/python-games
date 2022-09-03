@@ -33,14 +33,24 @@ class TileGame:
 
     for x in range(0, self.tilesX):
       for y in range(0, self.tilesY):
-        index = self.get_tile_index(x, y)
-        self.tiles[index] = {
-          "canvasItemId": None,
-          "rect": self.get_tile_rect(x, y),
-          "x": x,
-          "y": y,
-          "index": index
-        }
+        self.init_tile(x, y)
+
+  def init_tile(self, x, y):
+    index = self.get_tile_index(x, y)
+    left = x * self.tileSize
+    top = y * self.tileSize
+    self.tiles[index] = {
+      "canvasItemId": None,
+      "rect": {
+        "left": left,
+        "top": top,
+        "right": left + self.tileSize,
+        "bottom": top + self.tileSize
+      },
+      "x": x,
+      "y": y,
+      "index": index
+    }
 
   def init_grid(self, gridColor):
     for x in range(0, self.tilesX):
@@ -79,26 +89,15 @@ class TileGame:
   def get_tile(self, x, y):
     return self.tiles[self.get_tile_index(x, y)]
 
-  def get_tile_rect(self, x, y):
-    left = x * self.tileSize
-    top = y * self.tileSize
-    return {
-      "left": left,
-      "top": top,
-      "right": left + self.tileSize,
-      "bottom": top + self.tileSize
-    }
-  
   def clear_tile(self, x, y):
     tile = self.get_tile(x, y)
     if tile["canvasItemId"] != None:
       self.canvas.delete(tile["canvasItemId"])
-    tile["canvasItemId"] = None
+      tile["canvasItemId"] = None
   
   def draw_tile_rect(self, x, y, color):
+    self.clear_tile(x, y)
     tile = self.get_tile(x, y)
-    if tile["canvasItemId"] != None:
-      self.canvas.delete(tile["canvasItemId"])
     tile["canvasItemId"] = self.canvas.create_rectangle(
       tile["rect"]["left"],
       tile["rect"]["top"],
@@ -115,7 +114,7 @@ class TileGame:
     self.widget.after(FPS, self.update)
 
   def step(self):
-    return True
+    return False
 
   def on_key(self, e):
     print("key", e)
